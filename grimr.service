@@ -1,11 +1,11 @@
 [Unit]
-Description=Start Wi-Fi repeater AP after client connects
+Description=Grim Repeater Wi-Fi/Ethernet smart repeater
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/repeater_up.sh
+ExecStart=/usr/local/bin/grimr_up.sh   # <— must match the BIN path
 RemainAfterExit=yes
 
 [Install]
