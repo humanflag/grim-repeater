@@ -86,6 +86,14 @@ sudo systemctl daemon-reload
 sudo systemctl enable grimr.service
 sudo systemctl restart grimr.service
 
+# --- enable + start service ---
+sudo systemctl daemon-reload
+sudo systemctl enable grimr.service
+sudo systemctl restart grimr.service
+
+# --- install/update helper CLI ---
+WRAP="/usr/local/bin/grimr"
+echo "⬇️  Installing grimr helper CLI…"
 sudo curl -fsSL "$REPO/grimr" -o "$WRAP"
 sudo chmod +x "$WRAP"
 
