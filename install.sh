@@ -13,22 +13,25 @@ command -v iw    >/dev/null || { echo "Installing iw…";             sudo apt-g
 # --- paths ---
 CFG_DIR="/usr/local/etc/grim-repeater"
 CFG_FILE="$CFG_DIR/config.env"
-BIN="/usr/local/bin/grimr_up.sh"         # <— your new script name
-UNIT="/etc/systemd/system/grimr.service"    # <— new service name
-WRAP="/usr/local/bin/grimr"                 # helper CLI
+BIN="/usr/local/bin/grimr_up.sh"
+UNIT="/etc/systemd/system/grimr.service"
+WRAP="/usr/local/bin/grimr"
+UNINSTALL="/usr/local/bin/grimr-uninstall"   # <— new
 
 # --- fetch files from repo ---
 sudo mkdir -p "$CFG_DIR"
 echo "⬇️  Downloading config + scripts from repo…"
-sudo curl -fsSL "$REPO/config.env"       -o "$CFG_FILE"
-sudo curl -fsSL "$REPO/grimr_up.sh.sh"   -o "$BIN"
-sudo curl -fsSL "$REPO/grimr.service"    -o "$UNIT"
-# optional helper
-sudo curl -fsSL "$REPO/grimr"            -o "$WRAP" || true
+sudo curl -fsSL "$REPO/config.env"    -o "$CFG_FILE"
+sudo curl -fsSL "$REPO/grimr_up.sh"   -o "$BIN"
+sudo curl -fsSL "$REPO/grimr.service" -o "$UNIT"
+sudo curl -fsSL "$REPO/grimr"         -o "$WRAP" || true
+sudo curl -fsSL "$REPO/uninstall.sh"  -o "$UNINSTALL" || true   # <— add this
 
 sudo chmod 600 "$CFG_FILE"
 sudo chmod +x "$BIN"
 [ -f "$WRAP" ] && sudo chmod +x "$WRAP"
+[ -f "$UNINSTALL" ] && sudo chmod +x "$UNINSTALL"
+
 
 # --- load config (SSID/PASSWORD) ---
 set +u

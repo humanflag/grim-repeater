@@ -4,11 +4,12 @@ set -e
 echo "🧹 Uninstalling Grim Repeater..."
 
 # Disable and remove service
-sudo systemctl disable repeater.service || true
-sudo rm -f /etc/systemd/system/repeater.service
+sudo systemctl disable grimr.service || true
+sudo rm -f /etc/systemd/system/grimr.service
 
 # Remove script + config
-sudo rm -f /usr/local/bin/repeater_up.sh
+sudo rm -f /usr/local/bin/grimr_up.sh
+sudo rm -f /usr/local/bin/grimr
 sudo rm -rf /usr/local/etc/grim-repeater
 
 # Remove optimizations
