@@ -32,19 +32,30 @@ ensure_client_up() {
   if ! client_active; then
     $NMCLI con up "$CLIENT_CON" >/dev/null 2>&1 || true
     sleep 2
-  }
+  fi
 }
 
-# Count APs per channel; echo the best among 1/6/11 (least seen, tie -> lower chan)
+# Bring AP down if it's currently active
+ap_down_if_up() {
+  if $NMCLI -t -f NAME,TYPE,DEVICE con show --active | $GREP -q "^$AP_CON:wifi:$IFACE_WLAN$"; then
+    log "Bringing AP down to free radio for scanning…"
+    $NMCLI con down "$AP_CON" || true
+    # give wpa_supplicant a moment to release the interface
+    sleep 1
+  fi
+}
+
+# Rescan & return least-used channel among 1/6/11
 pick_2g_least_used() {
-  # nmcli dev wifi: columns IN-USE,SSID,CHAN; ignore hidden/blank SSIDs
+  $NMCLI dev wifi rescan >/dev/null 2>&1 || true
+  # brief wait so scan results populate
+  sleep 1
   list="$($NMCLI -f IN-USE,SSID,CHAN dev wifi 2>/dev/null | tail -n +2 || true)"
   c1=$(printf "%s\n" "$list" | $AWK '$3==1  && $2!=""{c++} END{print c+0}')
   c6=$(printf "%s\n" "$list" | $AWK '$3==6  && $2!=""{c++} END{print c+0}')
   c11=$(printf "%s\n" "$list" | $AWK '$3==11 && $2!=""{c++} END{print c+0}')
-  # choose min (tie -> smallest channel)
   best=1; min=$c1
-  [ "$c6" -lt "$min" ] && best=6  && min=$c6
+  [ "$c6"  -lt "$min" ] && best=6  && min=$c6
   [ "$c11" -lt "$min" ] && best=11 && min=$c11
   echo "$best"
 }
@@ -64,7 +75,6 @@ CHAN=""
 # 1) Prefer matching Wi-Fi client if active
 ensure_client_up
 if client_active; then
-  # Try nmcli first, then iw fallback
   CHAN="$($NMCLI -t -f ACTIVE,CHAN dev wifi 2>/dev/null | $AWK -F: '$1=="yes"{print $2; exit}')"
   [ -z "${CHAN:-}" -o "$CHAN" = "--" ] && CHAN="$($IW dev "$IFACE_WLAN" link 2>/dev/null | $AWK '/channel/{print $2; exit}')"
   if [ -n "${CHAN:-}" ]; then
@@ -73,22 +83,35 @@ if client_active; then
   fi
 fi
 
-# 2) If no Wi-Fi client channel, but Ethernet up → pick least-used 1/6/11
+# 2) If no Wi-Fi client channel, but Ethernet up → down AP, scan, pick least-used 1/6/11
 if [ -z "${CHAN:-}" ] && is_eth_up; then
-  CHAN="$(pick_2g_least_used || echo 6)"
+  ap_down_if_up
+  CHAN="$(pick_2g_least_used || true)"
+  if [ -z "${CHAN:-}" ]; then
+    CHAN="6"
+    log "Scan returned nothing; falling back to ch6."
+  else
+    log "Ethernet uplink; picked least-used 2.4 GHz channel $CHAN."
+  fi
   BAND="bg"
-  log "Ethernet uplink; auto-picked least-used 2.4 GHz channel $CHAN."
 fi
 
-# 3) If still nothing (no uplink), also pick least-used 1/6/11
+# 3) If still nothing (no uplink), also down AP, scan, pick least-used 1/6/11
 if [ -z "${CHAN:-}" ]; then
-  CHAN="$(pick_2g_least_used || echo 6)"
+  ap_down_if_up
+  CHAN="$(pick_2g_least_used || true)"
+  if [ -z "${CHAN:-}" ]; then
+    CHAN="6"
+    log "No uplink and scan empty; falling back to ch6."
+  else
+    log "No uplink; picked least-used 2.4 GHz channel $CHAN."
+  fi
   BAND="bg"
-  log "No uplink; auto-picked least-used 2.4 GHz channel $CHAN."
 fi
 
 # Apply and start AP if needed
 $NMCLI con mod "$AP_CON" 802-11-wireless.band "$BAND" 802-11-wireless.channel "$CHAN" || true
+
 if ! $NMCLI -t -f NAME,TYPE,DEVICE con show --active | $GREP -q "^$AP_CON:wifi:$IFACE_WLAN$"; then
   $NMCLI con up "$AP_CON" >/dev/null || true
 fi
