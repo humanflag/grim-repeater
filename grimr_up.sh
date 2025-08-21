@@ -109,12 +109,16 @@ if [ -z "${CHAN:-}" ]; then
   BAND="bg"
 fi
 
-# Apply and start AP if needed
-$NMCLI con mod "$AP_CON" 802-11-wireless.band "$BAND" 802-11-wireless.channel "$CHAN" || true
+# Force re-apply AP profile cleanly
+$NMCLI con down "$AP_CON" >/dev/null 2>&1 || true
+sleep 1
+$NMCLI con mod "$AP_CON" \
+  802-11-wireless.band "$BAND" \
+  802-11-wireless.channel "$CHAN"
+sleep 1
+$NMCLI con up "$AP_CON" >/dev/null || true
 
-if ! $NMCLI -t -f NAME,TYPE,DEVICE con show --active | $GREP -q "^$AP_CON:wifi:$IFACE_WLAN$"; then
-  $NMCLI con up "$AP_CON" >/dev/null || true
-fi
+
 
 SSID_CUR="$($NMCLI -t -f ACTIVE,SSID dev wifi 2>/dev/null | $AWK -F: '$1=="yes"{print $2; exit}')" || SSID_CUR=""
 [ -z "${SSID_CUR:-}" ] && SSID_CUR="(eth0 or none)"
