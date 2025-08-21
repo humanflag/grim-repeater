@@ -1,5 +1,5 @@
 # 1. Get repo
-git clone https://github.com/YOURUSER/grim-repeater.git
+git clone https://github.com/humanflag/grim-repeater
 cd grim-repeater
 
 # 2. Run installer
