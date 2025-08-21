@@ -6,7 +6,7 @@ Turns a Raspberry Pi into a smart Wi-Fi and Ethernet repeater.
 
 Quick install:
 
-    curl -fsSL https://raw.githubusercontent.com/humanflag/grim-repeater/main/install.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/humanflag/grim-repeater/main/install.sh | sudo bash
 
 Manual install:
 
