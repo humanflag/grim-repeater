@@ -2,48 +2,54 @@
 set -euo pipefail
 
 SERVICE="grimr.service"
-AP_CON="repeater-ap"
+AP_NAME="repeater-ap"
 
-cmd="${1:-}"
+status() {
+  echo "🔎 Grim Repeater status"
+  echo ""
 
-case "$cmd" in
-  status)
-    echo "🔎 Grim Repeater status"
-    echo
-    echo "Service:"
-    systemctl is-enabled "$SERVICE" 2>/dev/null | awk '{print "  Enabled: "$0}'
-    systemctl is-active "$SERVICE"  2>/dev/null | awk '{print "  Active:  "$0}'
-    echo
-    echo "Upstream (client):"
-    nmcli -t -f ACTIVE,SSID dev wifi | awk -F: '$1=="yes"{print "  SSID: " $2}'
-    nmcli -t -f ACTIVE,CHAN dev wifi | awk -F: '$1=="yes"{print "  Channel: " $2}'
-    echo
-    echo "Access Point (broadcast):"
-    nmcli -g 802-11-wireless.ssid connection show "$AP_CON" | sed 's/^/  SSID: /'
-    nmcli -g 802-11-wireless.band connection show "$AP_CON" | sed 's/^/  Band: /'
-    nmcli -g 802-11-wireless.channel connection show "$AP_CON" | sed 's/^/  Channel: /'
-    nmcli -g 802-11-wireless-security.psk connection show "$AP_CON" | sed 's/^/  Password: /' || true
-    ;;
-  logs)
-    journalctl -u "$SERVICE" -n 50 --no-pager
-    ;;
-  start)
-    sudo systemctl start "$SERVICE"
-    ;;
-  stop)
-    sudo systemctl stop "$SERVICE"
-    ;;
-  restart)
-    sudo systemctl restart "$SERVICE"
-    ;;
-  active)
-    nmcli con show --active
-    ;;
-  ap)
-    nmcli connection show "$AP_CON" | egrep 'ssid|psk|mode|band|channel|ipv4.method'
-    ;;
-  *)
-    echo "Usage: grimr {status|logs|start|stop|restart|active|ap}"
-    exit 1
+  echo "Service:"
+  echo "  Enabled: $(systemctl is-enabled $SERVICE 2>/dev/null || echo disabled)"
+  echo "  Active:  $(systemctl is-active  $SERVICE 2>/dev/null || echo inactive)"
+  echo ""
+
+  # Detect uplink
+  UP_IF=$(nmcli -t -f DEVICE,STATE d | awk -F: '$2=="connected"{print $1}' | grep -E 'eth0|wlan0' | head -n1 || true)
+
+  echo "Upstream:"
+  if [ "$UP_IF" = "eth0" ]; then
+    IP=$(ip -4 addr show eth0 | awk '/inet /{print $2}' | cut -d/ -f1)
+    echo "  Interface: eth0 (Ethernet)"
+    echo "  IP: ${IP:-none}"
+  elif [ "$UP_IF" = "wlan0" ]; then
+    SSID=$(iw dev wlan0 link | awk -F'ssid ' '/SSID/{print $2}')
+    CH=$(iw dev wlan0 link | awk '/channel/{print $2}')
+    echo "  Interface: wlan0 (Wi-Fi)"
+    echo "  SSID: ${SSID:-unknown}"
+    echo "  Channel: ${CH:-?}"
+  else
+    echo "  Interface: none"
+  fi
+  echo ""
+
+  echo "Access Point (broadcast):"
+  SSID=$(nmcli -g 802-11-wireless.ssid connection show $AP_NAME 2>/dev/null || echo "unknown")
+  BAND=$(nmcli -g 802-11-wireless.band connection show $AP_NAME 2>/dev/null || echo "?")
+  CHAN=$(nmcli -g 802-11-wireless.channel connection show $AP_NAME 2>/dev/null || echo "?")
+  PASS=$(nmcli -g 802-11-wireless-security.psk connection show $AP_NAME 2>/dev/null || echo "<hidden>")
+  echo "  SSID: $SSID"
+  echo "  Band: $BAND"
+  echo "  Channel: $CHAN"
+  echo "  Password: $PASS"
+}
+
+case "${1:-}" in
+  status) status ;;
+  restart) sudo systemctl restart $SERVICE && echo "🔁 grimr restarted." ;;
+  stop) sudo systemctl stop $SERVICE && echo "⏹️  grimr stopped." ;;
+  start) sudo systemctl start $SERVICE && echo "▶️  grimr started." ;;
+  logs) journalctl -u $SERVICE -e -n 50 ;;
+  *) 
+    echo "Usage: grimr {status|start|stop|restart|logs}"
     ;;
 esac
