@@ -1,0 +1,12 @@
+[Unit]
+Description=Start Wi-Fi repeater AP after client connects
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/repeater_up.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
