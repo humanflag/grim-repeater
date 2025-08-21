@@ -1,0 +1,49 @@
+#!/bin/bash
+set -euo pipefail
+
+SERVICE="grimr.service"
+AP_CON="repeater-ap"
+
+cmd="${1:-}"
+
+case "$cmd" in
+  status)
+    echo "🔎 Grim Repeater status"
+    echo
+    echo "Service:"
+    systemctl is-enabled "$SERVICE" 2>/dev/null | awk '{print "  Enabled: "$0}'
+    systemctl is-active "$SERVICE"  2>/dev/null | awk '{print "  Active:  "$0}'
+    echo
+    echo "Upstream (client):"
+    nmcli -t -f ACTIVE,SSID dev wifi | awk -F: '$1=="yes"{print "  SSID: " $2}'
+    nmcli -t -f ACTIVE,CHAN dev wifi | awk -F: '$1=="yes"{print "  Channel: " $2}'
+    echo
+    echo "Access Point (broadcast):"
+    nmcli -g 802-11-wireless.ssid connection show "$AP_CON" | sed 's/^/  SSID: /'
+    nmcli -g 802-11-wireless.band connection show "$AP_CON" | sed 's/^/  Band: /'
+    nmcli -g 802-11-wireless.channel connection show "$AP_CON" | sed 's/^/  Channel: /'
+    nmcli -g 802-11-wireless-security.psk connection show "$AP_CON" | sed 's/^/  Password: /' || true
+    ;;
+  logs)
+    journalctl -u "$SERVICE" -n 50 --no-pager
+    ;;
+  start)
+    sudo systemctl start "$SERVICE"
+    ;;
+  stop)
+    sudo systemctl stop "$SERVICE"
+    ;;
+  restart)
+    sudo systemctl restart "$SERVICE"
+    ;;
+  active)
+    nmcli con show --active
+    ;;
+  ap)
+    nmcli connection show "$AP_CON" | egrep 'ssid|psk|mode|band|channel|ipv4.method'
+    ;;
+  *)
+    echo "Usage: grimr {status|logs|start|stop|restart|active|ap}"
+    exit 1
+    ;;
+esac
