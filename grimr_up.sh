@@ -1,4 +1,3 @@
-sudo tee /usr/local/bin/grimr_up.sh >/dev/null <<'EOF'
 #!/bin/sh
 set -eu
 
