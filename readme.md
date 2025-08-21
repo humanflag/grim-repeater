@@ -1,7 +1,7 @@
 ```
-git clone https://github.com/humanflag/grim-repeater <br>
-cd grim-repeater <br>
-chmod +x install.sh <br>
-./install.sh <br>
+git clone https://github.com/humanflag/grim-repeater 
+cd grim-repeater 
+chmod +x install.sh 
+./install.sh 
 sudo reboot
 ```
