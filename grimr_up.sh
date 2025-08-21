@@ -109,7 +109,3 @@ CHAN="$(pick_2g_least_used || echo 6)"
 log "No uplink; standalone AP on least-used 2.4 GHz channel $CHAN."
 apply_ap "bg" "$CHAN"
 log "✅ AP '$SSID' running on ch$CHAN (bg); upstream: none"
-EOF
-
-sudo chmod +x /usr/local/bin/grimr_up.sh
-sudo systemctl restart grimr.service
